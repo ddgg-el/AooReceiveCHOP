@@ -1,0 +1,5 @@
+.vscode
+plugin/
+CMakeSettings.json
+build
+
