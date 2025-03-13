@@ -55,19 +55,20 @@ FillCHOPPluginInfo(CHOP_PluginInfo *info)
 
 	// It can accept up to 1 input though, which changes it's behavior
 	info->customOPInfo.maxInputs = 1;
+
 }
 
 DLLEXPORT
 CHOP_CPlusPlusBase*
 CreateCHOPInstance(const OP_NodeInfo* info)
 {
-AooError err = aoo_initialize(NULL);
-	if(err != kAooErrorNone){
-		// handle error
-		std::cout << "Error initializing Aoo: " << err << std::endl;
-	} else {
-		std::cout << "Aoo initialized" << std::endl;
-	}
+	// AooError err = aoo_initialize(NULL);
+	// if(err != kAooErrorNone){
+	// 	// handle error
+	// 	std::cout << "Error initializing Aoo: " << err << std::endl;
+	// } else {
+	// 	std::cout << "Aoo initialized" << std::endl;
+	// }
 	// Return a new instance of your class every time this is called.
 	// It will be called once per CHOP that is using the .dll
 	return new AooReceive_CHOP(info);
@@ -90,11 +91,12 @@ AooReceive_CHOP::AooReceive_CHOP(const OP_NodeInfo* info) : myNodeInfo(info)
 {
 	myExecuteCount = 0;
 	myOffset = 0.0;
+
 }
 
 AooReceive_CHOP::~AooReceive_CHOP()
 {
-
+	;
 }
 
 void
@@ -108,7 +110,6 @@ AooReceive_CHOP::getGeneralInfo(CHOP_GeneralInfo* ginfo, const OP_Inputs* inputs
 	// samples you want to generate for this CHOP. Otherwise it'll take on length of the
 	// input CHOP, which may be timesliced.
 	ginfo->timeslice = true;
-
 	ginfo->inputMatchIndex = 0;
 }
 
@@ -131,7 +132,7 @@ AooReceive_CHOP::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, v
 		//info->startIndex = 0
 
 		// For illustration we are going to output 120hz data
-		info->sampleRate = 120;
+		info->sampleRate = 44100;
 		return true;
 	}
 }
@@ -148,11 +149,10 @@ AooReceive_CHOP::execute(CHOP_Output* output,
 							  void* reserved)
 {
 	myExecuteCount++;
-	
+		
 	double	 scale = inputs->getParDouble("Scale");
 
 	// In this case we'll just take the first input and re-output it scaled.
-
 	if (inputs->getNumInputs() > 0)
 	{
 		// We know the first CHOP has the same number of channels
@@ -169,7 +169,7 @@ AooReceive_CHOP::execute(CHOP_Output* output,
 		{
 			for (int j = 0; j < output->numSamples; j++)
 			{
-				output->channels[i][j] = float(cinput->getChannelData(i)[ind] * scale);
+				output->channels[i][j] = float(cinput->getChannelData(i)[ind] * 0.1);
 				ind++;
 
 				// Make sure we don't read past the end of the CHOP input
@@ -227,7 +227,8 @@ AooReceive_CHOP::execute(CHOP_Output* output,
 
 			for (int j = 0; j < output->numSamples; j++)
 			{
-				output->channels[i][j] = float(v);
+				// output->channels[i][j] = sinf(2.0f * 3.14159f * j * speed /output->sampleRate);//float(v);
+				output->channels[i][j] = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.1f;
 				offset += step;
 			}
 		}

@@ -47,6 +47,13 @@ function(BuiltCustomOp OPNAME SRC LINK_LIBRARIES)
 
 	target_link_libraries(${OPNAME} PRIVATE ${LINK_LIBRARIES})
 
+	set(OPTEST ${OPNAME}_TEST)
+    add_custom_target(${OPTEST})
+
+    set_target_properties(${OPTEST} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/plugin)
+    set_target_properties(${OPTEST} PROPERTIES VS_DEBUGGER_ENVIRONMENT "TOUCH_TEXT_CONSOLE=1")
+    
+
 endfunction(BuiltCustomOp)
 
 ###
