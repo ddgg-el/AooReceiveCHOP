@@ -13,8 +13,13 @@
 */
 
 #include "AooReceive_CHOP.h"
+#include "aoo.h"
 
-#include <stdio.h>
+#ifdef __APPLE__
+	#include <iostream>
+#else
+	#include <stdio.h>
+#endif
 #include <string.h>
 #include <cmath>
 #include <assert.h>
@@ -56,6 +61,13 @@ DLLEXPORT
 CHOP_CPlusPlusBase*
 CreateCHOPInstance(const OP_NodeInfo* info)
 {
+AooError err = aoo_initialize(NULL);
+	if(err != kAooErrorNone){
+		// handle error
+		std::cout << "Error initializing Aoo: " << err << std::endl;
+	} else {
+		std::cout << "Aoo initialized" << std::endl;
+	}
 	// Return a new instance of your class every time this is called.
 	// It will be called once per CHOP that is using the .dll
 	return new AooReceive_CHOP(info);

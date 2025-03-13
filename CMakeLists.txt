@@ -1,34 +1,25 @@
 cmake_minimum_required(VERSION 3.10)
+project(AooReceiveCHOP)
 
-if(APPLE)
-	set(TOUCHDESIGNER_APP "/Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner" CACHE FILEPATH "TouchDesigner Executable Path")
-else()
-	set(TOUCHDESIGNER_APP "C:/Program Files/Derivative/TouchDesigner/bin/TouchDesigner.exe" CACHE FILEPATH "TouchDesigner Executable Path")
-endif()
-###
-
-project(CustomOps)
-
-include_directories(
-	# ${CMAKE_CURRENT_SOURCE_DIR}/src
-	${CMAKE_CURRENT_SOURCE_DIR}/derivative
-	${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-link_directories(
-	${CMAKE_CURRENT_SOURCE_DIR}/libs
-)
-
-file(GLOB DEP_SRC
-	${CMAKE_CURRENT_SOURCE_DIR}/derivative/*.cpp
-)
-
-###
 
 if (APPLE)
 	set(CMAKE_CXX_STANDARD 11)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -stdlib=libc++")
 endif()
+
+
+include_directories(
+	${CMAKE_CURRENT_SOURCE_DIR}/derivative
+	${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+set(AOO_USE_OPUS OFF CACHE BOOL "use Opus codec" FORCE)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/aoo EXCLUDE_FROM_ALL)
+
+
+file(GLOB DEP_SRC
+	${CMAKE_CURRENT_SOURCE_DIR}/derivative/*.cpp
+)
 
 set(OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/plugin)
 
@@ -54,19 +45,11 @@ function(BuiltCustomOp OPNAME SRC LINK_LIBRARIES)
 	set_target_properties(${OPNAME} PROPERTIES BUNDLE TRUE)
 	set_target_properties(${OPNAME} PROPERTIES BUNDLE_EXTENSION "plugin")
 
-	target_link_libraries(${OPNAME} ${LINK_LIBRARIES})
-
-	set(OPTEST ${OPNAME}_TEST)
-	add_custom_target(${OPTEST})
-
-	set_target_properties(${OPTEST} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/plugin)
-	set_target_properties(${OPTEST} PROPERTIES VS_DEBUGGER_COMMAND ${TOUCHDESIGNER_APP})
-	set_target_properties(${OPTEST} PROPERTIES VS_DEBUGGER_ENVIRONMENT "TOUCH_TEXT_CONSOLE=1")
-	set_target_properties(${OPTEST} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "test.toe")
+	target_link_libraries(${OPNAME} PRIVATE ${LINK_LIBRARIES})
 
 endfunction(BuiltCustomOp)
 
 ###
 
 
-BuiltCustomOp(AooReceiveCHOP "src/AooReceive_CHOP.cpp" "")
+BuiltCustomOp(${PROJECT_NAME} "src/AooReceive_CHOP.cpp" "Aoo::aoo")
