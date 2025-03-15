@@ -13,6 +13,7 @@
 */
 
 #include "CHOP_CPlusPlusBase.h"
+#include "AooReceive.h"
 
 using namespace TD;
 
@@ -63,6 +64,10 @@ public:
 	virtual void		pulsePressed(const char* name, void* reserved1) override;
 	virtual void		buildDynamicMenu(const OP_Inputs* inputs, OP_BuildDynamicMenuInfo* info, void* reserved1) override;
 
+	AooReceive& delegate() {
+		return static_cast<AooReceive&>(*delegate_);
+	}
+
 private:
 
 	// We don't need to store this pointer, but we do for the example.
@@ -76,6 +81,11 @@ private:
 
 
 	double				myOffset;
+
+	std::shared_ptr<AooReceive> delegate_;
+
+	void handleParameters(const OP_Inputs* inputs, const OP_CHOPInput* chop);
+	void setupSink();
 
 
 };

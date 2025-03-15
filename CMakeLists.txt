@@ -3,14 +3,16 @@ project(AooReceiveCHOP)
 
 
 if (APPLE)
-	set(CMAKE_CXX_STANDARD 11)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -stdlib=libc++")
+	set(CMAKE_CXX_STANDARD 17)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -stdlib=libc++")
 endif()
 
 
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/derivative
 	${CMAKE_CURRENT_SOURCE_DIR}/include
+	${CMAKE_CURRENT_SOURCE_DIR}/libs/aoo/
+	${CMAKE_CURRENT_SOURCE_DIR}/libs/aoo/include
 )
 
 set(AOO_USE_OPUS OFF CACHE BOOL "use Opus codec" FORCE)

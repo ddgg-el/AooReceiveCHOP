@@ -92,24 +92,29 @@ AooReceive_CHOP::AooReceive_CHOP(const OP_NodeInfo* info) : myNodeInfo(info)
 	myExecuteCount = 0;
 	myOffset = 0.0;
 
+	std::cout << "Constructing AooReceive_CHOP" << std::endl;
+
 }
 
 AooReceive_CHOP::~AooReceive_CHOP()
 {
-	;
+	std::cout << "De-Constructing AooReceive_CHOP" << std::endl;
 }
 
 void
 AooReceive_CHOP::getGeneralInfo(CHOP_GeneralInfo* ginfo, const OP_Inputs* inputs, void* reserved1)
 {
+	std::cout << "Getting General Info" << std::endl;
 	// This will cause the node to cook every frame
-	ginfo->cookEveryFrameIfAsked = true;
+	ginfo->cookEveryFrameIfAsked = false;
+
+	std::cout << inputs->getParInt("Numchannels") << std::endl;
 
 	// Note: To disable timeslicing you'll need to turn this off, as well as ensure that
 	// getOutputInfo() returns true, and likely also set the info->numSamples to how many
 	// samples you want to generate for this CHOP. Otherwise it'll take on length of the
 	// input CHOP, which may be timesliced.
-	ginfo->timeslice = true;
+	ginfo->timeslice = false;
 	ginfo->inputMatchIndex = 0;
 }
 
@@ -131,7 +136,6 @@ AooReceive_CHOP::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, v
 		//info->numSamples = 1;
 		//info->startIndex = 0
 
-		// For illustration we are going to output 120hz data
 		info->sampleRate = 44100;
 		return true;
 	}
@@ -148,94 +152,24 @@ AooReceive_CHOP::execute(CHOP_Output* output,
 							  const OP_Inputs* inputs,
 							  void* reserved)
 {
-	myExecuteCount++;
-		
-	double	 scale = inputs->getParDouble("Scale");
+	std::cout << "Executing AooReceive_CHOP" << std::endl;
+	// auto sink = delegate().sink();
+	// if (sink) {
+	// 	uint64_t t = 0;//getOSCTime(mWorld);
 
-	// In this case we'll just take the first input and re-output it scaled.
-	if (inputs->getNumInputs() > 0)
-	{
-		// We know the first CHOP has the same number of channels
-		// because we returned false from getOutputInfo. 
-
-		inputs->enablePar("Speed", 0);	// not used
-		inputs->enablePar("Reset", 0);	// not used
-		inputs->enablePar("Shape", 0);	// not used
-
-		int ind = 0;
-		const OP_CHOPInput	*cinput = inputs->getInputCHOP(0);
-
-		for (int i = 0 ; i < output->numChannels; i++)
-		{
-			for (int j = 0; j < output->numSamples; j++)
-			{
-				output->channels[i][j] = float(cinput->getChannelData(i)[ind] * 0.1);
-				ind++;
-
-				// Make sure we don't read past the end of the CHOP input
-				ind = ind % cinput->numSamples;
-			}
-		}
-
-	}
-	else // If not input is connected, lets output a sine wave instead
-	{
-		inputs->enablePar("Speed", 1);
-		inputs->enablePar("Reset", 1);
-
-		double speed = inputs->getParDouble("Speed");
-		double step = speed * 0.01f;
-
-
-		// menu items can be evaluated as either an integer menu position, or a string
-		int shape = inputs->getParInt("Shape");
-//		const char *shape_str = inputs->getParString("Shape");
-
-		// keep each channel at a different phase
-		double phase = 2.0f * 3.14159f / (float)(output->numChannels);
-
-		// Notice that startIndex and the output->numSamples is used to output a smooth
-		// wave by ensuring that we are outputting a value for each sample
-		// Since we are outputting at 120, for each frame that has passed we'll be
-		// outputing 2 samples (assuming the timeline is running at 60hz).
-
-
-		for (int i = 0; i < output->numChannels; i++)
-		{
-			double offset = myOffset + phase*i;
-
-
-			double v = 0.0f;
-
-			switch(shape)
-			{
-				case 0:		// sine
-					v = sin(offset);
-					break;
-
-				case 1:		// square
-					v = fabs(fmod(offset, 1.0)) > 0.5;
-					break;
-
-				case 2:		// ramp	
-					v = fabs(fmod(offset, 1.0));
-					break;
-			}
-
-
-			v *= scale;
-
-			for (int j = 0; j < output->numSamples; j++)
-			{
-				// output->channels[i][j] = sinf(2.0f * 3.14159f * j * speed /output->sampleRate);//float(v);
-				output->channels[i][j] = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.1f;
-				offset += step;
-			}
-		}
-
-		myOffset += step * output->numSamples; 
-	}
+	// 	if (sink->process(output->channels, output->numSamples, t, nullptr, nullptr) == kAooOk){
+	// 		delegate().node()->notify();
+	// 	} else {
+	// 		// fill with zeros
+	// 		std::fill(&output->channels[0][0], &output->channels[0][0] + output->numChannels * output->numSamples, 0.0f);
+	// 	}
+	// }
+	// else {
+		// fill with zeros
+		std::fill(&output->channels[0][0], &output->channels[0][0] + output->numChannels * output->numSamples, 0.5f);
+	// }
 }
+
 
 int32_t
 AooReceive_CHOP::getNumInfoCHOPChans(void * reserved1)
@@ -314,9 +248,14 @@ AooReceive_CHOP::getInfoDATEntries(int32_t index,
 	}
 }
 
+// Called on Parameter changed
 void
 AooReceive_CHOP::buildDynamicMenu(const OP_Inputs* inputs, OP_BuildDynamicMenuInfo* info, void* reserved1)
 {
+//	double speed = inputs->getParDouble("Speed");
+//	std::cout << "Speed: " << speed << std::endl;
+	std::cout << "Changed Parameter: " << info->name << std::endl;
+
 	if (!strcmp(info->name, "Shapemod"))
 	{
 		const char* shapeStr = inputs->getParString("Shape");
@@ -341,78 +280,67 @@ AooReceive_CHOP::buildDynamicMenu(const OP_Inputs* inputs, OP_BuildDynamicMenuIn
 void
 AooReceive_CHOP::setupParameters(OP_ParameterManager* manager, void *reserved1)
 {
-	// speed
-	{
-		OP_NumericParameter	np;
+	std::cout << "Setup Parameters AooReceive_CHOP" << std::endl;
 
-		np.name = "Speed";
-		np.label = "Speed";
-		np.defaultValues[0] = 1.0;
-		np.minSliders[0] = -10.0;
-		np.maxSliders[0] =  10.0;
-		
-		OP_ParAppendResult res = manager->appendFloat(np);
+	// channels
+	{
+		OP_NumericParameter np;
+		np.page = "Setup";
+		np.name = "Numchannels";
+		np.label = "Num Channels";
+		np.defaultValues[0] = 0;
+		np.minSliders[0] = 0;
+		np.maxSliders[0] = 10;
+		np.clampMins[0] = true;
+
+		OP_ParAppendResult res = manager->appendInt(np);
 		assert(res == OP_ParAppendResult::Success);
 	}
 
-	// scale
+	// port
 	{
-		OP_NumericParameter	np;
+		OP_NumericParameter np;
+		np.page = "Setup";
+		np.name = "Port";
+		np.label = "Port";
+		np.defaultValues[0] = 2;
+		np.minSliders[0] = 0;
+		np.maxSliders[0] = pow(2, 16) - 1; // 65535
+		np.clampMins[0] = true;
+		np.clampMaxes[0] = true;
 
-		np.name = "Scale";
-		np.label = "Scale";
-		np.defaultValues[0] = 1.0;
-		np.minSliders[0] = -10.0;
-		np.maxSliders[0] =  10.0;
-		
-		OP_ParAppendResult res = manager->appendFloat(np);
-		assert(res == OP_ParAppendResult::Success);
-	}
-
-	// shape
-	{
-		OP_StringParameter	sp;
-
-		sp.name = "Shape";
-		sp.label = "Shape";
-
-		sp.defaultValue = "Sine";
-
-		const char *names[] = { "Sine", "Square", "Ramp" };
-		const char *labels[] = { "Sine", "Square", "Ramp" };
-
-		OP_ParAppendResult res = manager->appendMenu(sp, 3, names, labels);
+		OP_ParAppendResult res = manager->appendInt(np);
 		assert(res == OP_ParAppendResult::Success);
 	}
 	
-	// Dynamic Menu, this menu doesn't actually change the behavior
-	// but is here to show how to make a dynamic menu.
-	// The buildDynamicMenu() function is called for this parameter,
-	// allowing it to be built up on-demand based on other parameters
-	// or extranal values
-	{
-		OP_StringParameter	sp;
-
-		sp.name = "Shapemod";
-		sp.label = "Shape Modifier (not used)";
-
-		sp.defaultValue = "regular";
-
-		OP_ParAppendResult res = manager->appendDynamicStringMenu(sp);
-		assert(res == OP_ParAppendResult::Success);
-	}
-
-	// pulse
+	// id
 	{
 		OP_NumericParameter	np;
-
-		np.name = "Reset";
-		np.label = "Reset";
+		np.page = "Setup";
+		np.name = "Id";
+		np.label = "Id";
+		np.defaultValues[0] = 0;
+		np.minSliders[0] = 0;
+		np.maxSliders[0] =  10;
+		np.clampMins[0] = true;
 		
-		OP_ParAppendResult res = manager->appendPulse(np);
+		OP_ParAppendResult res = manager->appendInt(np);
 		assert(res == OP_ParAppendResult::Success);
 	}
 
+	// latency
+	{
+		OP_NumericParameter	np;
+		np.page = "Setup";
+		np.name = "Latency";
+		np.label = "Latency";
+		np.defaultValues[0] = DEFAULT_LATENCY;
+		np.minSliders[0] = 10;
+		np.maxSliders[0] =  100;
+		
+		OP_ParAppendResult res = manager->appendInt(np);
+		assert(res == OP_ParAppendResult::Success);
+	}
 }
 
 void 
@@ -422,5 +350,32 @@ AooReceive_CHOP::pulsePressed(const char* name, void* reserved1)
 	{
 		myOffset = 0.0;
 	}
+}
+
+void AooReceive_CHOP::handleParameters(const OP_Inputs* inputs, const OP_CHOPInput* chop)
+{
+	std::cout << "Handle Parameters AooReceive_CHOP" << std::endl;
+	// speed
+	// double speed = inputs->getParDouble("Speed");
+
+	// // scale
+	// double scale = inputs->getParDouble("Scale");
+
+	// // shape
+	// int shape = inputs->getParInt("Shape");
+
+	// // shape modifier
+	// const char* shapeMod = inputs->getParString("Shapemod");
+
+	// // reset
+	// if (inputs->getParInt("Reset"))
+	// {
+	// 	myOffset = 0.0;
+	// }
+}
+
+void AooReceive_CHOP::setupSink()
+{
+	;
 }
 
