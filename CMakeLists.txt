@@ -21,6 +21,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/aoo EXCLUDE_FROM_ALL)
 
 file(GLOB DEP_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/derivative/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 )
 
 set(OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/plugin)

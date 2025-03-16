@@ -12,10 +12,9 @@
 * prior written permission from Derivative.
 */
 
-#include "CHOP_CPlusPlusBase.h"
-#include "AooReceive.h"
 
-using namespace TD;
+#include "TDAooReceive.h"
+
 
 /*
 
@@ -31,10 +30,10 @@ of the input will get used.
 
 If no input is connected then the node will output a smooth sine wave at 120hz.
 */
-
+using namespace TD;
 
 // To get more help about these functions, look at CHOP_CPlusPlusBase.h
-class AooReceive_CHOP : public CHOP_CPlusPlusBase
+class AooReceive_CHOP : public AooCHOP
 {
 public:
 	AooReceive_CHOP(const OP_NodeInfo* info);
@@ -64,8 +63,8 @@ public:
 	virtual void		pulsePressed(const char* name, void* reserved1) override;
 	virtual void		buildDynamicMenu(const OP_Inputs* inputs, OP_BuildDynamicMenuInfo* info, void* reserved1) override;
 
-	AooReceive& delegate() {
-		return static_cast<AooReceive&>(*delegate_);
+	TD::AooReceive& delegate() {
+		return static_cast<TD::AooReceive&>(*aoo_delegate_);
 	}
 
 private:
@@ -74,15 +73,10 @@ private:
 	// The OP_NodeInfo class store information about the node that's using
 	// this instance of the class (like its name).
 	const OP_NodeInfo*	myNodeInfo;
-
 	// In this example this value will be incremented each time the execute()
 	// function is called, then passes back to the CHOP 
 	int32_t				myExecuteCount;
-
-
 	double				myOffset;
-
-	std::shared_ptr<AooReceive> delegate_;
 
 	void handleParameters(const OP_Inputs* inputs, const OP_CHOPInput* chop);
 	void setupSink();

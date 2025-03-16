@@ -15,11 +15,7 @@
 #include "AooReceive_CHOP.h"
 #include "aoo.h"
 
-#ifdef __APPLE__
-	#include <iostream>
-#else
-	#include <stdio.h>
-#endif
+
 #include <string.h>
 #include <cmath>
 #include <assert.h>
@@ -89,16 +85,24 @@ DestroyCHOPInstance(CHOP_CPlusPlusBase* instance)
 
 AooReceive_CHOP::AooReceive_CHOP(const OP_NodeInfo* info) : myNodeInfo(info)
 {
+	std::cout << "Constructing AooReceive_CHOP" << std::endl;
+
 	myExecuteCount = 0;
 	myOffset = 0.0;
 
-	std::cout << "Constructing AooReceive_CHOP" << std::endl;
+	auto delegate = std::make_unique<AooReceive>(*this);
+	if(delegate){
+		aoo_delegate_ = std::move(delegate);
+	}
+
 
 }
 
 AooReceive_CHOP::~AooReceive_CHOP()
 {
+	
 	std::cout << "De-Constructing AooReceive_CHOP" << std::endl;
+	delegate().detach();
 }
 
 void
@@ -109,7 +113,11 @@ AooReceive_CHOP::getGeneralInfo(CHOP_GeneralInfo* ginfo, const OP_Inputs* inputs
 	ginfo->cookEveryFrameIfAsked = false;
 
 	std::cout << inputs->getParInt("Numchannels") << std::endl;
-
+	// if(aoo_delegate_->initialized()){
+	// 	ginfo->numChannels = aoo_delegate_->sink()->numChannels();
+	// } else {
+	// 	ginfo->numChannels = 1;
+	// }
 	// Note: To disable timeslicing you'll need to turn this off, as well as ensure that
 	// getOutputInfo() returns true, and likely also set the info->numSamples to how many
 	// samples you want to generate for this CHOP. Otherwise it'll take on length of the
