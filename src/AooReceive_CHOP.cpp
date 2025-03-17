@@ -12,13 +12,13 @@
 * prior written permission from Derivative.
 */
 
+#include "CHOP_CPlusPlusBase.h"
 #include "AooReceive_CHOP.h"
-#include "aoo.h"
-
 
 #include <string.h>
 #include <cmath>
 #include <assert.h>
+
 
 // These functions are basic C function, which the DLL loader can find
 // much easier than finding a C++ Class.
@@ -61,9 +61,9 @@ CreateCHOPInstance(const OP_NodeInfo* info)
 	// AooError err = aoo_initialize(NULL);
 	// if(err != kAooErrorNone){
 	// 	// handle error
-	// 	std::cout << "Error initializing Aoo: " << err << std::endl;
+	// 	TD_LOG << "Error initializing Aoo: " << err << std::endl;
 	// } else {
-	// 	std::cout << "Aoo initialized" << std::endl;
+	// 	TD_LOG << "Aoo initialized" << std::endl;
 	// }
 	// Return a new instance of your class every time this is called.
 	// It will be called once per CHOP that is using the .dll
@@ -83,36 +83,27 @@ DestroyCHOPInstance(CHOP_CPlusPlusBase* instance)
 };
 
 
-AooReceive_CHOP::AooReceive_CHOP(const OP_NodeInfo* info) : myNodeInfo(info)
+AooReceive_CHOP::AooReceive_CHOP(const OP_NodeInfo* info) : 
+	num_channels_(2), port_(9009), id_(0)
 {
-	std::cout << "Constructing AooReceive_CHOP" << std::endl;
+	TD_LOG << "Constructing AooReceive_CHOP" << std::endl;
 
-	myExecuteCount = 0;
-	myOffset = 0.0;
-
-	auto delegate = std::make_unique<AooReceive>(*this);
-	if(delegate){
-		aoo_delegate_ = std::move(delegate);
-	}
-
-
+	
 }
 
 AooReceive_CHOP::~AooReceive_CHOP()
 {
-	
-	std::cout << "De-Constructing AooReceive_CHOP" << std::endl;
-	delegate().detach();
+	TD_LOG << "De-Constructing AooReceive_CHOP" << std::endl;
+	if(aoo_receiver != nullptr){
+		delete aoo_receiver;
+	}
 }
 
 void
 AooReceive_CHOP::getGeneralInfo(CHOP_GeneralInfo* ginfo, const OP_Inputs* inputs, void* reserved1)
 {
-	std::cout << "Getting General Info" << std::endl;
 	// This will cause the node to cook every frame
-	ginfo->cookEveryFrameIfAsked = false;
-
-	std::cout << inputs->getParInt("Numchannels") << std::endl;
+	ginfo->cookEveryFrameIfAsked = true;
 	// if(aoo_delegate_->initialized()){
 	// 	ginfo->numChannels = aoo_delegate_->sink()->numChannels();
 	// } else {
@@ -122,13 +113,14 @@ AooReceive_CHOP::getGeneralInfo(CHOP_GeneralInfo* ginfo, const OP_Inputs* inputs
 	// getOutputInfo() returns true, and likely also set the info->numSamples to how many
 	// samples you want to generate for this CHOP. Otherwise it'll take on length of the
 	// input CHOP, which may be timesliced.
-	ginfo->timeslice = false;
+	ginfo->timeslice = true;
 	ginfo->inputMatchIndex = 0;
 }
 
 bool
 AooReceive_CHOP::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, void* reserved1)
 {
+//	TD_LOG << "Getting Output Info" << std::endl;
 	// If there is an input connected, we are going to match it's channel names etc
 	// otherwise we'll specify our own.
 	if (inputs->getNumInputs() > 0)
@@ -137,7 +129,33 @@ AooReceive_CHOP::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, v
 	}
 	else
 	{
-		info->numChannels = 1;
+		int32_t numchannels = inputs->getParInt("Numchannels");
+		int32_t port = inputs->getParInt("Port");
+		int32_t id = inputs->getParInt("Id");
+		int32_t latency = inputs->getParInt("Latency");
+
+		
+		
+		if(num_channels_ != numchannels || port_ != port || id_ != id || latency_ != latency){
+			num_channels_ = numchannels;
+			port_ = port;
+			id_ = id;
+			latency_ = latency;
+
+			setupReceiver();
+		}
+		
+//		TD_LOG << "Orignal NumChannels: " << info->numChannels << " Parameter NumChannels " << numchannels << std::endl;
+
+
+		info->numChannels = numchannels;
+		
+		// AooReceive& aoo_delegate = delegate();
+		// if(aoo_delegate.initialized()){
+		// 	aoo_delegate.init(numchannels, 44100, 512, kAooPcmFloat32);
+			
+		// }
+
 
 		// Since we are outputting a timeslice, the system will dictate
 		// the numSamples and startIndex of the CHOP data
@@ -160,7 +178,7 @@ AooReceive_CHOP::execute(CHOP_Output* output,
 							  const OP_Inputs* inputs,
 							  void* reserved)
 {
-	std::cout << "Executing AooReceive_CHOP" << std::endl;
+//	TD_LOG << "Executing AooReceive_CHOP" << std::endl;
 	// auto sink = delegate().sink();
 	// if (sink) {
 	// 	uint64_t t = 0;//getOSCTime(mWorld);
@@ -197,14 +215,26 @@ AooReceive_CHOP::getInfoCHOPChan(int32_t index,
 
 	if (index == 0)
 	{
-		chan->name->setString("executeCount");
-		chan->value = (float)myExecuteCount;
+		chan->name->setString("Channel Count");
+		chan->value = (float)num_channels_;
 	}
 
 	if (index == 1)
 	{
-		chan->name->setString("offset");
-		chan->value = (float)myOffset;
+		chan->name->setString("Port");
+		chan->value = (float)port_;
+	}
+
+	if (index == 2)
+	{
+		chan->name->setString("ID");
+		chan->value = (float)id_;
+	}
+	
+	if (index == 3)
+	{
+		chan->name->setString("Latency");
+		chan->value = (float)latency_;
 	}
 }
 
@@ -230,13 +260,13 @@ AooReceive_CHOP::getInfoDATEntries(int32_t index,
 	if (index == 0)
 	{
 		// Set the value for the first column
-		entries->values[0]->setString("executeCount");
+		entries->values[0]->setString("channelCount");
 
 		// Set the value for the second column
 #ifdef _WIN32
 		sprintf_s(tempBuffer, "%d", myExecuteCount);
 #else // macOS
-		snprintf(tempBuffer, sizeof(tempBuffer), "%d", myExecuteCount);
+		snprintf(tempBuffer, sizeof(tempBuffer), "%d", (int)num_channels_);
 #endif
 		entries->values[1]->setString(tempBuffer);
 	}
@@ -244,51 +274,50 @@ AooReceive_CHOP::getInfoDATEntries(int32_t index,
 	if (index == 1)
 	{
 		// Set the value for the first column
-		entries->values[0]->setString("offset");
+		entries->values[0]->setString("port");
 
 		// Set the value for the second column
 #ifdef _WIN32
 		sprintf_s(tempBuffer, "%g", myOffset);
 #else // macOS
-		snprintf(tempBuffer, sizeof(tempBuffer), "%g", myOffset);
+		snprintf(tempBuffer, sizeof(tempBuffer), "%d", (int)port_);
 #endif
 		entries->values[1]->setString( tempBuffer);
 	}
-}
 
-// Called on Parameter changed
-void
-AooReceive_CHOP::buildDynamicMenu(const OP_Inputs* inputs, OP_BuildDynamicMenuInfo* info, void* reserved1)
-{
-//	double speed = inputs->getParDouble("Speed");
-//	std::cout << "Speed: " << speed << std::endl;
-	std::cout << "Changed Parameter: " << info->name << std::endl;
-
-	if (!strcmp(info->name, "Shapemod"))
+	if (index == 2)
 	{
-		const char* shapeStr = inputs->getParString("Shape");
-		if (!strcmp(shapeStr, "Sine"))
-		{
-			info->addMenuEntry("regular", "Regular");
-			info->addMenuEntry("inverted", "Inverted");
-		}
-		else if (!strcmp(shapeStr, "Square"))
-		{
-			info->addMenuEntry("regular", "Regular");
-			info->addMenuEntry("inverted", "Inverted");
-		}
-		else
-		{
-			info->addMenuEntry("increasing", "Increasing");
-			info->addMenuEntry("decreasing", "Decreasing");
-		}
+		// Set the value for the first column
+		entries->values[0]->setString("id");
+
+		// Set the value for the second column
+#ifdef _WIN32
+		sprintf_s(tempBuffer, "%g", myOffset);
+#else // macOS
+		snprintf(tempBuffer, sizeof(tempBuffer), "%d", (int)id_);
+#endif
+		entries->values[1]->setString( tempBuffer);
+	}
+
+	if (index == 3)
+	{
+		// Set the value for the first column
+		entries->values[0]->setString("latency");
+
+		// Set the value for the second column
+#ifdef _WIN32
+		sprintf_s(tempBuffer, "%g", myOffset);
+#else // macOS
+		snprintf(tempBuffer, sizeof(tempBuffer), "%d", (int)latency_);
+#endif
+		entries->values[1]->setString( tempBuffer);
 	}
 }
 
 void
 AooReceive_CHOP::setupParameters(OP_ParameterManager* manager, void *reserved1)
 {
-	std::cout << "Setup Parameters AooReceive_CHOP" << std::endl;
+	TD_LOG << "Setup Parameters AooReceive_CHOP" << std::endl;
 
 	// channels
 	{
@@ -296,7 +325,7 @@ AooReceive_CHOP::setupParameters(OP_ParameterManager* manager, void *reserved1)
 		np.page = "Setup";
 		np.name = "Numchannels";
 		np.label = "Num Channels";
-		np.defaultValues[0] = 0;
+		np.defaultValues[0] = 2;
 		np.minSliders[0] = 0;
 		np.maxSliders[0] = 10;
 		np.clampMins[0] = true;
@@ -311,7 +340,7 @@ AooReceive_CHOP::setupParameters(OP_ParameterManager* manager, void *reserved1)
 		np.page = "Setup";
 		np.name = "Port";
 		np.label = "Port";
-		np.defaultValues[0] = 2;
+		np.defaultValues[0] = 9009;
 		np.minSliders[0] = 0;
 		np.maxSliders[0] = pow(2, 16) - 1; // 65535
 		np.clampMins[0] = true;
@@ -356,34 +385,26 @@ AooReceive_CHOP::pulsePressed(const char* name, void* reserved1)
 {
 	if (!strcmp(name, "Reset"))
 	{
-		myOffset = 0.0;
+		// myOffset = 0.0;
 	}
 }
 
-void AooReceive_CHOP::handleParameters(const OP_Inputs* inputs, const OP_CHOPInput* chop)
+void
+AooReceive_CHOP::getErrorString(OP_String *error, void *reserver1)
 {
-	std::cout << "Handle Parameters AooReceive_CHOP" << std::endl;
-	// speed
-	// double speed = inputs->getParDouble("Speed");
-
-	// // scale
-	// double scale = inputs->getParDouble("Scale");
-
-	// // shape
-	// int shape = inputs->getParInt("Shape");
-
-	// // shape modifier
-	// const char* shapeMod = inputs->getParString("Shapemod");
-
-	// // reset
-	// if (inputs->getParInt("Reset"))
-	// {
-	// 	myOffset = 0.0;
-	// }
+	error->setString(errorString.c_str());
+	errorString.clear();
 }
 
-void AooReceive_CHOP::setupSink()
+void AooReceive_CHOP::setupReceiver()
 {
-	;
+	TD_LOG << "Setup AooReceiver" << std::endl;
+
+	if(aoo_receiver != nullptr){
+        aoo_receiver->initialized();
+		delete(aoo_receiver);
+	} 
+
+	aoo_receiver = new AooReceive(num_channels_, port_, id_, latency_);
 }
 

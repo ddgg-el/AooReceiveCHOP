@@ -33,7 +33,7 @@ If no input is connected then the node will output a smooth sine wave at 120hz.
 using namespace TD;
 
 // To get more help about these functions, look at CHOP_CPlusPlusBase.h
-class AooReceive_CHOP : public AooCHOP
+class AooReceive_CHOP : public CHOP_CPlusPlusBase
 {
 public:
 	AooReceive_CHOP(const OP_NodeInfo* info);
@@ -61,25 +61,21 @@ public:
 
 	virtual void		setupParameters(OP_ParameterManager* manager, void *reserved1) override;
 	virtual void		pulsePressed(const char* name, void* reserved1) override;
-	virtual void		buildDynamicMenu(const OP_Inputs* inputs, OP_BuildDynamicMenuInfo* info, void* reserved1) override;
+	virtual void 		getErrorString(OP_String *error, void *reserver1) override;
 
-	TD::AooReceive& delegate() {
-		return static_cast<TD::AooReceive&>(*aoo_delegate_);
-	}
+
+	void setupReceiver();
 
 private:
+	std::string	errorString;
+	double 	num_channels_;
+	double 	port_;
+	double 	id_;
+	double 	latency_ = DEFAULT_LATENCY;
 
-	// We don't need to store this pointer, but we do for the example.
-	// The OP_NodeInfo class store information about the node that's using
-	// this instance of the class (like its name).
-	const OP_NodeInfo*	myNodeInfo;
-	// In this example this value will be incremented each time the execute()
-	// function is called, then passes back to the CHOP 
-	int32_t				myExecuteCount;
-	double				myOffset;
+
+
+	AooReceive* aoo_receiver;
 
 	void handleParameters(const OP_Inputs* inputs, const OP_CHOPInput* chop);
-	void setupSink();
-
-
 };

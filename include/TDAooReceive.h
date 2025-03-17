@@ -1,73 +1,62 @@
 #pragma once
+#include "aoo.h"
+#include "aoo_sink.hpp"
+#include "aoo_client.hpp"
 
+#include <thread>
+// #include "aoo_types.h"
 
-#include "TDAooCommon.h"
-// #include "oscpack/osc/OscOutboundPacketStream.h"
+#define DEFAULT_LATENCY 25
+#define TD_LOG std::cout
 
+#ifdef __APPLE__
+	#include <iostream>
+#else
+	#include <stdio.h>
+#endif
 
 namespace TD
 {
-
-
-	
-
-	/**
-	 * @brief Node in the Aoo network
-	 * 
-	 */
-	// class AooNode final : public INode {
-	// public:
-	// 	AooNode(int port);
-	// 	~AooNode() override;
-
-	// 	int port() const override { return port_; }
-
-	// 	AooClient* client() override {
-	// 		return client_.get();
-	// 	}
-
-	// 	bool registerClient(AooClient* c) override;
-
-	// 	void unregisterClient(AooClient* c) override;
-
-	// 	void notify() override {
-	// 		client_->notify();
-	// 	}
-	// private:
-	// 	int port_ = 0;
-	// 	aoo::AooClient::Ptr client_;
-
-	// };
-
-
-
-
 	/**
 	 * @brief Aoo Receive Delegate
 	 * 
 	 */
-	class AooReceive final : public AooDelegate {
+	class AooReceive 
+	{
 	public:
-		using AooDelegate::AooDelegate;
-		~AooReceive()
-		{
-			TD_LOG << "De-Constructing AooReceive Delegate" << std::endl;
-		};
+		AooReceive(int32_t numChannels, int32_t port, AooId id, int latency = DEFAULT_LATENCY);
+		~AooReceive();
 
-		void init(int32_t port, AooId id, AooSeconds latency);
+		void start();
+		void stop();
 
-		void onDetach() override;
+		void process(float **outBuf, int numFrames);
 
-		void handleEvent(const AooEvent *event);
+		void handleEvent(const AooEvent &event);
 
-		AooSink* sink() { return sink_.get(); }
+		bool initialized() const { return initialized_; };
+		double getSampleRate() const { return static_cast<double>(sr); };
+		int getNumChannels() const { return numChannels_; };
+
+		AooError setupSink(AooInt32 numChannels, AooSampleRate sr, AooInt32 blockSize, AooSetupFlags flags);
+
+		
 	private:
 		AooSink::Ptr sink_;
-		int port = 0;
-		AooId id = 0;
-		AooSeconds latency = DEFAULT_LATENCY;
+		AooClient::Ptr client_;
 
-		int numChannels_ = 2;
+
+		int port;
+		AooId id;
+		int latency;
+		AooSampleRate sr = 44100;
+
+		int numChannels_;
+
+		bool initialized_ = false;
+
+		std::thread send_thread_;
+		std::thread receive_thread_;
 
 	};
 }
