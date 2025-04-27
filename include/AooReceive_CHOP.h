@@ -71,11 +71,14 @@ private:
 	double 	num_channels_;
 	double 	port_;
 	double 	id_;
+    float sr_;
+	int32_t blockSize_;
 	double 	latency_ = DEFAULT_LATENCY;
 
 
 
-	AooReceive* aoo_receiver;
+
+	AooReceive* aoo_receiver = nullptr;
 
 	void handleParameters(const OP_Inputs* inputs, const OP_CHOPInput* chop);
 };

@@ -24,7 +24,7 @@ namespace TD
 	class AooReceive 
 	{
 	public:
-		AooReceive(int32_t numChannels, int32_t port, AooId id, int latency = DEFAULT_LATENCY);
+		AooReceive(int32_t numChannels, double sr, int32_t numSamples, int32_t port, AooId id, int latency = DEFAULT_LATENCY);
 		~AooReceive();
 
 		void start();
@@ -35,8 +35,8 @@ namespace TD
 		void handleEvent(const AooEvent &event);
 
 		bool initialized() const { return initialized_; };
-		double getSampleRate() const { return static_cast<double>(sr); };
-		int getNumChannels() const { return numChannels_; };
+		// double getSampleRate() const { return static_cast<double>(sr); };
+		// int getNumChannels() const { return numChannels_; };
 
 		AooError setupSink(AooInt32 numChannels, AooSampleRate sr, AooInt32 blockSize, AooSetupFlags flags);
 
@@ -46,12 +46,13 @@ namespace TD
 		AooClient::Ptr client_;
 
 
-		int port;
-		AooId id;
-		int latency;
-		AooSampleRate sr = 44100;
+		// int numChannels;
+		// AooSampleRate sr;
+		// AooInt32 blockSize;
+		// int port;
+		// AooId id;
+		// int latency;
 
-		int numChannels_;
 
 		bool initialized_ = false;
 

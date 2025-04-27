@@ -50,7 +50,7 @@ FillCHOPPluginInfo(CHOP_PluginInfo *info)
 	info->customOPInfo.minInputs = 0;
 
 	// It can accept up to 1 input though, which changes it's behavior
-	info->customOPInfo.maxInputs = 1;
+	info->customOPInfo.maxInputs = 0;
 
 }
 
@@ -58,13 +58,13 @@ DLLEXPORT
 CHOP_CPlusPlusBase*
 CreateCHOPInstance(const OP_NodeInfo* info)
 {
-	// AooError err = aoo_initialize(NULL);
-	// if(err != kAooErrorNone){
-	// 	// handle error
-	// 	TD_LOG << "Error initializing Aoo: " << err << std::endl;
-	// } else {
-	// 	TD_LOG << "Aoo initialized" << std::endl;
-	// }
+	 AooError err = aoo_initialize(NULL);
+	 if(err != kAooErrorNone){
+	 	// handle error
+	 	TD_LOG << "Error initializing Aoo: " << err << std::endl;
+	 } else {
+	 	TD_LOG << "Aoo initialized" << std::endl;
+	 }
 	// Return a new instance of your class every time this is called.
 	// It will be called once per CHOP that is using the .dll
 	return new AooReceive_CHOP(info);
@@ -84,7 +84,7 @@ DestroyCHOPInstance(CHOP_CPlusPlusBase* instance)
 
 
 AooReceive_CHOP::AooReceive_CHOP(const OP_NodeInfo* info) : 
-	num_channels_(2), port_(9009), id_(0)
+	num_channels_(2), port_(9009), id_(0), sr_(44100)
 {
 	TD_LOG << "Constructing AooReceive_CHOP" << std::endl;
 
@@ -104,11 +104,7 @@ AooReceive_CHOP::getGeneralInfo(CHOP_GeneralInfo* ginfo, const OP_Inputs* inputs
 {
 	// This will cause the node to cook every frame
 	ginfo->cookEveryFrameIfAsked = true;
-	// if(aoo_delegate_->initialized()){
-	// 	ginfo->numChannels = aoo_delegate_->sink()->numChannels();
-	// } else {
-	// 	ginfo->numChannels = 1;
-	// }
+	
 	// Note: To disable timeslicing you'll need to turn this off, as well as ensure that
 	// getOutputInfo() returns true, and likely also set the info->numSamples to how many
 	// samples you want to generate for this CHOP. Otherwise it'll take on length of the
@@ -123,54 +119,26 @@ AooReceive_CHOP::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, v
 //	TD_LOG << "Getting Output Info" << std::endl;
 	// If there is an input connected, we are going to match it's channel names etc
 	// otherwise we'll specify our own.
-	if (inputs->getNumInputs() > 0)
-	{
-		return false;
-	}
-	else
-	{
-		int32_t numchannels = inputs->getParInt("Numchannels");
-		int32_t port = inputs->getParInt("Port");
-		int32_t id = inputs->getParInt("Id");
-		int32_t latency = inputs->getParInt("Latency");
+	int32_t numchannels = inputs->getParInt("Numchannels");
+	
+    info->numChannels = numchannels;
+	
 
-		
-		
-		if(num_channels_ != numchannels || port_ != port || id_ != id || latency_ != latency){
-			num_channels_ = numchannels;
-			port_ = port;
-			id_ = id;
-			latency_ = latency;
+	// Since we are outputting a timeslice, the system will dictate
+	// the numSamples and startIndex of the CHOP data
+	//info->numSamples = 1;
+	//info->startIndex = 0
 
-			setupReceiver();
-		}
-		
-//		TD_LOG << "Orignal NumChannels: " << info->numChannels << " Parameter NumChannels " << numchannels << std::endl;
-
-
-		info->numChannels = numchannels;
-		
-		// AooReceive& aoo_delegate = delegate();
-		// if(aoo_delegate.initialized()){
-		// 	aoo_delegate.init(numchannels, 44100, 512, kAooPcmFloat32);
-			
-		// }
-
-
-		// Since we are outputting a timeslice, the system will dictate
-		// the numSamples and startIndex of the CHOP data
-		//info->numSamples = 1;
-		//info->startIndex = 0
-
-		info->sampleRate = 44100;
-		return true;
-	}
+	info->sampleRate = sr_;
+	return true;
+	
 }
 
 void
 AooReceive_CHOP::getChannelName(int32_t index, OP_String *name, const OP_Inputs* inputs, void* reserved1)
 {
-	name->setString("chan1");
+    std::string channelName = "chan" + std::to_string(index + 1);
+    name->setString(channelName.c_str());
 }
 
 void
@@ -178,22 +146,31 @@ AooReceive_CHOP::execute(CHOP_Output* output,
 							  const OP_Inputs* inputs,
 							  void* reserved)
 {
-//	TD_LOG << "Executing AooReceive_CHOP" << std::endl;
-	// auto sink = delegate().sink();
-	// if (sink) {
-	// 	uint64_t t = 0;//getOSCTime(mWorld);
+    int32_t port = inputs->getParInt("Port");
+    int32_t id = inputs->getParInt("Id");
+    int32_t latency = inputs->getParInt("Latency");
+    int32_t numchannels = output->numChannels; // inputs->getParInt("Numchannels");
+    
+    if(num_channels_ != numchannels || output->numSamples != blockSize_ || port_ != port || id_ != id || latency_ != latency){
+        num_channels_ = numchannels;
+		blockSize_ = output->numSamples;
+        port_ = port;
+        id_ = id;
+        latency_ = latency;
 
-	// 	if (sink->process(output->channels, output->numSamples, t, nullptr, nullptr) == kAooOk){
-	// 		delegate().node()->notify();
-	// 	} else {
-	// 		// fill with zeros
-	// 		std::fill(&output->channels[0][0], &output->channels[0][0] + output->numChannels * output->numSamples, 0.0f);
-	// 	}
-	// }
-	// else {
-		// fill with zeros
-		std::fill(&output->channels[0][0], &output->channels[0][0] + output->numChannels * output->numSamples, 0.5f);
-	// }
+        setupReceiver();
+    }
+    
+
+	aoo_receiver->process(output->channels, output->numSamples);
+    // fill with zeros
+//    for (int i = 0; i < output->numChannels; ++i)
+//    {
+//        for (int j = 0; j < output->numSamples; ++j)
+//        {
+//            output->channels[i][j] = 0;
+//        }
+//    }
 }
 
 
@@ -202,7 +179,7 @@ AooReceive_CHOP::getNumInfoCHOPChans(void * reserved1)
 {
 	// We return the number of channel we want to output to any Info CHOP
 	// connected to the CHOP. In this example we are just going to send one channel.
-	return 2;
+	return num_channels_;
 }
 
 void
@@ -341,8 +318,10 @@ AooReceive_CHOP::setupParameters(OP_ParameterManager* manager, void *reserved1)
 		np.name = "Port";
 		np.label = "Port";
 		np.defaultValues[0] = 9009;
+        np.minValues[0] = 0;
+        np.maxValues[0] = 65535;
 		np.minSliders[0] = 0;
-		np.maxSliders[0] = pow(2, 16) - 1; // 65535
+        np.maxSliders[0] = 65535;
 		np.clampMins[0] = true;
 		np.clampMaxes[0] = true;
 
@@ -405,6 +384,6 @@ void AooReceive_CHOP::setupReceiver()
 		delete(aoo_receiver);
 	} 
 
-	aoo_receiver = new AooReceive(num_channels_, port_, id_, latency_);
+	aoo_receiver = new AooReceive(num_channels_, sr_, blockSize_, port_, id_, latency_);
 }
 

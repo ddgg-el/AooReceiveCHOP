@@ -1,9 +1,10 @@
 #include "TDAooReceive.h"
+#include "cassert"
 
 using namespace TD;
 
-AooReceive::AooReceive(int32_t numChannels, int32_t port, AooId id, int latency) :
-	numChannels_(numChannels), port(port), id(id), latency(latency)
+AooReceive::AooReceive(int32_t numChannels, double sr, int32_t numSamples, int32_t port, AooId id, int latency)
+	// numChannels(numChannels), sr(sr), blockSize(numSamples), port(port), id(id), latency(latency)
 {
 	sink_ = AooSink::create(id);
 	sink_->setEventHandler(
@@ -25,6 +26,7 @@ AooReceive::AooReceive(int32_t numChannels, int32_t port, AooId id, int latency)
 	}
 
 	client_->addSink(sink_.get());
+	setupSink(numChannels, sr, numSamples, 0);
 
 	initialized_ = true;
 }
