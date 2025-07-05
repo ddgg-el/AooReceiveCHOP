@@ -4,7 +4,7 @@ project(AooReceiveCHOP)
 
 if (APPLE)
 	set(CMAKE_CXX_STANDARD 17)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -stdlib=libc++")
+	set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
 
@@ -24,6 +24,11 @@ file(GLOB DEP_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 )
 
+file(GLOB_RECURSE HEADER_FILES 
+	${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
+	${CMAKE_CURRENT_SOURCE_DIR}/derivative/*.h
+)
+
 set(OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/plugin)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_DIRECTORY})
@@ -41,7 +46,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${OUTPUT_DIRECTORY})
 
 function(BuiltCustomOp OPNAME SRC LINK_LIBRARIES)
 
-	add_library(${OPNAME} MODULE ${SRC} ${DEP_SRC})
+	add_library(${OPNAME} MODULE)
+	target_sources(${OPNAME} PRIVATE ${SRC} ${DEP_SRC})
+	target_sources(${OPNAME} PUBLIC ${HEADER_FILES})
 
 	set_target_properties(${OPNAME} PROPERTIES LINKER_LANGUAGE CXX)
 	set_target_properties(${OPNAME} PROPERTIES PREFIX "")

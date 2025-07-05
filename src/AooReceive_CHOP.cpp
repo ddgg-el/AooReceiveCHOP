@@ -82,13 +82,11 @@ DestroyCHOPInstance(CHOP_CPlusPlusBase* instance)
 
 };
 
-
-AooReceive_CHOP::AooReceive_CHOP(const OP_NodeInfo* info) : 
+// TODO: how do I get the sample rate from the host?
+AooReceive_CHOP::AooReceive_CHOP(const OP_NodeInfo* info) :
 	num_channels_(2), port_(9009), id_(0), sr_(44100)
 {
 	TD_LOG << "Constructing AooReceive_CHOP" << std::endl;
-
-	
 }
 
 AooReceive_CHOP::~AooReceive_CHOP()
@@ -157,20 +155,28 @@ AooReceive_CHOP::execute(CHOP_Output* output,
         port_ = port;
         id_ = id;
         latency_ = latency;
+        
+        errorString.clear();
+        
+        if(errorString.empty()){
+            setupReceiver();
+        }
 
-        setupReceiver();
+
     }
     
-
-	aoo_receiver->process(output->channels, output->numSamples);
-    // fill with zeros
-//    for (int i = 0; i < output->numChannels; ++i)
-//    {
-//        for (int j = 0; j < output->numSamples; ++j)
-//        {
-//            output->channels[i][j] = 0;
-//        }
-//    }
+	if(aoo_receiver && aoo_receiver->initialized()){
+		aoo_receiver->process(output->channels, output->numSamples);
+	} else {
+		// fill with zeros
+		for (int i = 0; i < output->numChannels; ++i)
+		{
+			for (int j = 0; j < output->numSamples; ++j)
+			{
+				output->channels[i][j] = 0;
+			}
+	   }
+	}
 }
 
 
@@ -179,7 +185,7 @@ AooReceive_CHOP::getNumInfoCHOPChans(void * reserved1)
 {
 	// We return the number of channel we want to output to any Info CHOP
 	// connected to the CHOP. In this example we are just going to send one channel.
-	return num_channels_;
+	return 4;
 }
 
 void
@@ -192,14 +198,18 @@ AooReceive_CHOP::getInfoCHOPChan(int32_t index,
 
 	if (index == 0)
 	{
-		chan->name->setString("Channel Count");
-		chan->value = (float)num_channels_;
+		// chan->name->setString("Channel Count");
+		// chan->value = (float)num_channels_;
+        chan->name->setString("Port");
+        chan->value = (float)port_;
 	}
 
 	if (index == 1)
 	{
-		chan->name->setString("Port");
-		chan->value = (float)port_;
+        chan->name->setString("Channel Count");
+        chan->value = (float)num_channels_;
+		// chan->name->setString("Port");
+		// chan->value = (float)port_;
 	}
 
 	if (index == 2)
@@ -219,10 +229,10 @@ bool
 AooReceive_CHOP::getInfoDATSize(OP_InfoDATSize* infoSize, void* reserved1)
 {
 	infoSize->rows = 2;
-	infoSize->cols = 2;
+	infoSize->cols = 4;
 	// Setting this to false means we'll be assigning values to the table
 	// one row at a time. True means we'll do it one column at a time.
-	infoSize->byColumn = false;
+	infoSize->byColumn = true;
 	return true;
 }
 
@@ -372,7 +382,11 @@ void
 AooReceive_CHOP::getErrorString(OP_String *error, void *reserver1)
 {
 	error->setString(errorString.c_str());
-	errorString.clear();
+	if(aoo_receiver){
+		error->setString(aoo_receiver->aooError.c_str());
+	}
+//    errorString.clear();
+//	aoo_receiver->aooError.clear();
 }
 
 void AooReceive_CHOP::setupReceiver()
@@ -380,10 +394,11 @@ void AooReceive_CHOP::setupReceiver()
 	TD_LOG << "Setup AooReceiver" << std::endl;
 
 	if(aoo_receiver != nullptr){
-        aoo_receiver->initialized();
 		delete(aoo_receiver);
 	} 
 
 	aoo_receiver = new AooReceive(num_channels_, sr_, blockSize_, port_, id_, latency_);
+    
+    errorString = aoo_receiver->aooError;
 }
 

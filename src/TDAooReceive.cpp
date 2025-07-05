@@ -7,10 +7,16 @@ AooReceive::AooReceive(int32_t numChannels, double sr, int32_t numSamples, int32
 	// numChannels(numChannels), sr(sr), blockSize(numSamples), port(port), id(id), latency(latency)
 {
 	sink_ = AooSink::create(id);
+
+	if (!sink_) {
+		aooError = "Could not create AOO sink";
+		return;
+	}
+
 	sink_->setEventHandler(
 		[](void *user, const AooEvent *event, AooThreadLevel) {
 			static_cast<AooReceive*>(user)->handleEvent(*event);
-		}, this, kAooEventModeCallback);
+        }, this, kAooEventModePoll);
 
 	sink_->setLatency(latency*0.001);
 
@@ -21,8 +27,12 @@ AooReceive::AooReceive(int32_t numChannels, double sr, int32_t numSamples, int32
 	if(auto err = client_->setup(settings); err == kAooOk){
 		TD_LOG << "Receiving on port " << port << " with ID " << id << "..." << std::endl;
 	} else {
-		TD_LOG << "Could not initialize Client" << std::endl;
-		return;
+        if(err == kAooErrorSocket){
+            aooError = "Socket Error: " + aoo::socket::strerror(aoo::socket::get_last_error());
+        } else {
+            aooError =  "Could not initialize AooClient";
+        }
+        return;
 	}
 
 	client_->addSink(sink_.get());
@@ -109,6 +119,13 @@ void AooReceive::handleEvent(const AooEvent &event)
 		std::cout << "format changed: '" << f.codecName << "' codec, "
 		          << f.numChannels << " channels, " << f.sampleRate
 		          << " Hz, " << f.blockSize << " samples" << std::endl;
+		break;
+	}
+	case kAooErrorSocket:
+	{
+		std::string msg;
+		msg = aoo::socket::strerror(aoo::socket::get_last_error());
+		aooError = "Socket error: " + msg;
 		break;
 	}
 	
