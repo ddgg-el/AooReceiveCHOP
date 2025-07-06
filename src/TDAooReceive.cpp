@@ -7,10 +7,16 @@ AooReceive::AooReceive(int32_t numChannels, double sr, int32_t numSamples, int32
 	// numChannels(numChannels), sr(sr), blockSize(numSamples), port(port), id(id), latency(latency)
 {
 	sink_ = AooSink::create(id);
+
+	if (!sink_) {
+		aooError = "Could not create AOO sink";
+		return;
+	}
+
 	sink_->setEventHandler(
 		[](void *user, const AooEvent *event, AooThreadLevel) {
 			static_cast<AooReceive*>(user)->handleEvent(*event);
-		}, this, kAooEventModeCallback);
+        }, this, kAooEventModeCallback);
 
 	sink_->setLatency(latency*0.001);
 
@@ -21,14 +27,22 @@ AooReceive::AooReceive(int32_t numChannels, double sr, int32_t numSamples, int32
 	if(auto err = client_->setup(settings); err == kAooOk){
 		TD_LOG << "Receiving on port " << port << " with ID " << id << "..." << std::endl;
 	} else {
-		TD_LOG << "Could not initialize Client" << std::endl;
-		return;
+        if(err == kAooErrorSocket){
+            aooError = "Socket Error: " + aoo::socket::strerror(aoo::socket::get_last_error());
+        } else {
+            aooError =  aoo_strerror(err);
+        }
+        return;
 	}
 
 	client_->addSink(sink_.get());
-	setupSink(numChannels, sr, numSamples, 0);
+	AooError err = setupSink(numChannels, sr, numSamples, 0);
+	if(err != kAooOk){
+		initialized_ = false;	
+	} else {
+		initialized_ = true;
+	}
 
-	initialized_ = true;
 }
 
 AooReceive::~AooReceive() {
@@ -58,6 +72,10 @@ AooError AooReceive::setupSink(AooInt32 numChannels, AooSampleRate sr, AooInt32 
 		receive_thread_ = std::thread([this]() {
 			client_->receive(kAooInfinite);
 		});
+	} else {
+		std::string msg;
+		msg = aoo_strerror(err);
+		aooError = "Sink setup error: " + msg;
 	}
 
 	return err;
@@ -91,28 +109,108 @@ void AooReceive::process(float **outBuf, int numFrames)
 
 void AooReceive::handleEvent(const AooEvent &event)
 {
+	TD_LOG << "Received event: " << std::to_string(event.type) << std::endl;
+
 	switch (event.type)
 	{
-	case kAooEventStreamStart:
+	case kAooEventSourceAdd:
+    case kAooEventSourceRemove:
+    case kAooEventStreamStart:
+    case kAooEventStreamStop:
+    case kAooEventStreamState:
+    case kAooEventStreamTime:
+    case kAooEventStreamLatency:
+    case kAooEventFormatChange:
+    case kAooEventInviteDecline:
+    case kAooEventInviteTimeout:
+    case kAooEventUninviteTimeout:
+    case kAooEventBufferOverrun:
+    case kAooEventBufferUnderrun:
+    case kAooEventBlockDrop:
+    case kAooEventBlockResend:
+    case kAooEventBlockXRun:
+    case kAooEventSourcePing:
 	{
-		TD_LOG << "Start stream from source " << event.streamStop.endpoint.address << std::endl;
+		TD_LOG << "Handling event type: " << std::to_string(event.type) << std::endl;
+		auto& ep = event.endpoint.endpoint;
+		aoo::ip_address addr((const sockaddr*)ep.address, ep.addrlen);
+		switch (event.type)
+		{
+		
+			case kAooEventSourcePing:
+			{
+				auto& e = event.sourcePing;
+
+				double delta1 = aoo_ntpTimeDuration(e.t1, e.t2) * 1000.0;
+				double delta2 = aoo_ntpTimeDuration(e.t3, e.t4) * 1000.0;
+				double total_rtt = aoo_ntpTimeDuration(e.t1, e.t4) * 1000.0;
+				double network_rtt = total_rtt - aoo_ntpTimeDuration(e.t2, e.t3) * 1000.0;
+
+				std::ostringstream ss;
+				ss << "Source ping from " << addr.name() << ": "
+					<< "delta1 = " << delta1 << " ms, "
+					<< "delta2 = " << delta2 << " ms, "
+					<< "total RTT = " << total_rtt << " ms, "
+					<< "network RTT = " << network_rtt << " ms";
+					
+					aooInfo = ss.str();
+				break;
+			}
+			case kAooEventStreamStart:
+			{	
+				std::ostringstream ss;
+				//TODO: print actual address and not reference
+				ss << "Start stream from source " << event.streamStop.endpoint.address << std::endl;
+				aooInfo = ss.str();
+				break;
+			}
+			case kAooEventStreamStop:
+			{
+				std::ostringstream ss;
+				//TODO: print actual address and not reference
+				ss << "Stop stream from source " << event.streamStop.endpoint.address << std::endl;
+				aooInfo = ss.str();
+				break;
+			}
+			case kAooEventFormatChange:
+			{
+				auto& f = *event.formatChange.format;
+				std::ostringstream ss;
+				ss << "format changed: '" << f.codecName << "' codec, "
+						<< f.numChannels << " channels, " << f.sampleRate
+						<< " Hz, " << f.blockSize << " samples" << std::endl;
+				aooInfo = ss.str();
+				break;
+			}
+			case kAooErrorSocket:
+			{
+				std::string msg;
+				msg = aoo::socket::strerror(aoo::socket::get_last_error());
+				aooError = "Socket error: " + msg;
+				break;
+			}
+			
+			default:
+				break;
+		}
 		break;
 	}
-	case kAooEventStreamStop:
-	{
-		TD_LOG << "Stop stream from source " << event.streamStop.endpoint.address << std::endl;
-		break;
-	}
-	case kAooEventFormatChange:
-	{
-		auto& f = *event.formatChange.format;
-		std::cout << "format changed: '" << f.codecName << "' codec, "
-		          << f.numChannels << " channels, " << f.sampleRate
-		          << " Hz, " << f.blockSize << " samples" << std::endl;
-		break;
-	}
-	
 	default:
+		aooInfo = "Unkown event type";
 		break;
 	}
+}
+
+std::string AooReceive::getAooInfo()
+{
+	std::string info = aooInfo;
+	aooInfo.clear();
+	return info;
+}
+
+std::string AooReceive::getAooError()
+{
+	std::string error = aooError;
+	aooError.clear();
+	return error;
 }

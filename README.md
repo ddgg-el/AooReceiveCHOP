@@ -10,7 +10,7 @@ More information about the Aoo project can be found at the [Aoo Homepage](https:
 ```zsh
 $ mkdir build
 $ cd build
-$ cmake ..
+$ cmake -GXcode .. -DCMAKE_BUILD_TYPE=Debug -DAOO_LOG_LEVEL=Debug
 $ cmake --build .
 ```
 The `AooReceiveCHOP.plugin` will be created inside the `plugin` and can be loaded via a `CPlusPlusCHOP` or directly installed in the User `Palette`

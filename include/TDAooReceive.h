@@ -2,6 +2,7 @@
 #include "aoo.h"
 #include "aoo_sink.hpp"
 #include "aoo_client.hpp"
+#include "common/net_utils.hpp"
 
 #include <thread>
 // #include "aoo_types.h"
@@ -39,13 +40,16 @@ namespace TD
 		// int getNumChannels() const { return numChannels_; };
 
 		AooError setupSink(AooInt32 numChannels, AooSampleRate sr, AooInt32 blockSize, AooSetupFlags flags);
-
+		std::string getAooInfo();
+		std::string getAooError();
 		
-	private:
+		private:
 		AooSink::Ptr sink_;
 		AooClient::Ptr client_;
-
-
+		
+		std::string aooError;
+		std::string aooInfo;
+		
 		// int numChannels;
 		// AooSampleRate sr;
 		// AooInt32 blockSize;
@@ -53,7 +57,7 @@ namespace TD
 		// AooId id;
 		// int latency;
 
-
+		
 		bool initialized_ = false;
 
 		std::thread send_thread_;
