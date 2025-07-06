@@ -19,6 +19,36 @@
 #include <cmath>
 #include <assert.h>
 
+#include <Python.h>
+#include <structmember.h>
+
+static PyObject*
+pyReset(PyObject* self)
+{
+	PY_Struct* me = (PY_Struct*)self;
+
+	PY_GetInfo info;
+	info.autoCook = false;
+	AooReceive_CHOP* inst = (AooReceive_CHOP*)me->context->getNodeInstance(info);
+
+	if(inst)
+	{
+		me->context->makeNodeDirty();
+	}
+
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
+const char* PythonCallbackDATStubs =
+"# me - this DAT\n"
+"\n"
+"# eventOp - The instance of the AooReceive_CHOP.\n"
+"# info - Logs from the AooNetwork\n"
+"#\n"
+"def aoo_log(eventOp, info):\n"
+"	# print(info)\n"
+"	pass\n";
 
 // These functions are basic C function, which the DLL loader can find
 // much easier than finding a C++ Class.
@@ -52,7 +82,12 @@ FillCHOPPluginInfo(CHOP_PluginInfo *info)
 	// It can accept up to 1 input though, which changes it's behavior
 	info->customOPInfo.maxInputs = 0;
 
+	info->customOPInfo.pythonVersion->setString(PY_VERSION);
+	info->customOPInfo.pythonCallbacksDAT = PythonCallbackDATStubs;
+
 }
+
+
 
 DLLEXPORT
 CHOP_CPlusPlusBase*
@@ -84,7 +119,7 @@ DestroyCHOPInstance(CHOP_CPlusPlusBase* instance)
 
 // TODO: how do I get the sample rate from the host?
 AooReceive_CHOP::AooReceive_CHOP(const OP_NodeInfo* info) :
-	num_channels_(2), port_(9009), id_(0), sr_(44100)
+	num_channels_(2), port_(9009), id_(0), sr_(48000), nodeInfo(info)
 {
 	TD_LOG << "Constructing AooReceive_CHOP" << std::endl;
 }
@@ -161,11 +196,17 @@ AooReceive_CHOP::execute(CHOP_Output* output,
         if(errorString.empty()){
             setupReceiver();
         }
-
-
     }
     
 	if(aoo_receiver && aoo_receiver->initialized()){
+		std::string aooInfo = aoo_receiver->getAooInfo();
+		if(!aooInfo.empty()){
+			PyObject* args = nodeInfo->context->createArgumentsTuple(1, nullptr);
+			PyTuple_SET_ITEM(args, 1, PyUnicode_FromString(aooInfo.c_str()));
+			PyObject* result = nodeInfo->context->callPythonCallback("aoo_log", args, nullptr, nullptr);
+			Py_DECREF(args);
+			TD_LOG << "Aoo Info: " << aooInfo << std::endl;
+		}
 		aoo_receiver->process(output->channels, output->numSamples);
 	} else {
 		// fill with zeros
@@ -382,9 +423,6 @@ void
 AooReceive_CHOP::getErrorString(OP_String *error, void *reserver1)
 {
 	error->setString(errorString.c_str());
-	if(aoo_receiver){
-		error->setString(aoo_receiver->aooError.c_str());
-	}
 //    errorString.clear();
 //	aoo_receiver->aooError.clear();
 }
@@ -399,6 +437,6 @@ void AooReceive_CHOP::setupReceiver()
 
 	aoo_receiver = new AooReceive(num_channels_, sr_, blockSize_, port_, id_, latency_);
     
-    errorString = aoo_receiver->aooError;
+    errorString = aoo_receiver->getAooError();
 }
 

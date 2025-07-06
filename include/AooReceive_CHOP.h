@@ -75,10 +75,8 @@ private:
 	int32_t blockSize_;
 	double 	latency_ = DEFAULT_LATENCY;
 
-
-
+	const OP_NodeInfo* nodeInfo;
 
 	AooReceive* aoo_receiver = nullptr;
 
-	void handleParameters(const OP_Inputs* inputs, const OP_CHOPInput* chop);
 };

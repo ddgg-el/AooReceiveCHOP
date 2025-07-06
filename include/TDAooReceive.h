@@ -40,13 +40,16 @@ namespace TD
 		// int getNumChannels() const { return numChannels_; };
 
 		AooError setupSink(AooInt32 numChannels, AooSampleRate sr, AooInt32 blockSize, AooSetupFlags flags);
-		std::string aooError;
+		std::string getAooInfo();
+		std::string getAooError();
 		
-	private:
+		private:
 		AooSink::Ptr sink_;
 		AooClient::Ptr client_;
-
-
+		
+		std::string aooError;
+		std::string aooInfo;
+		
 		// int numChannels;
 		// AooSampleRate sr;
 		// AooInt32 blockSize;
