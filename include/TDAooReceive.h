@@ -5,6 +5,7 @@
 #include "common/net_utils.hpp"
 
 #include <thread>
+#include <iostream>
 // #include "aoo_types.h"
 
 #define DEFAULT_LATENCY 25
@@ -47,8 +48,8 @@ namespace TD
 		AooSink::Ptr sink_;
 		AooClient::Ptr client_;
 		
-		std::string aooError;
-		std::string aooInfo;
+		std::string aooError = "";
+		std::string aooInfo = "";
 		
 		// int numChannels;
 		// AooSampleRate sr;

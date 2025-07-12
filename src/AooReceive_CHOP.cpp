@@ -287,29 +287,16 @@ AooReceive_CHOP::getInfoDATEntries(int32_t index,
 
 	if (index == 0)
 	{
-		// Set the value for the first column
 		entries->values[0]->setString("channelCount");
 
-		// Set the value for the second column
-#ifdef _WIN32
-		sprintf_s(tempBuffer, "%d", myExecuteCount);
-#else // macOS
 		snprintf(tempBuffer, sizeof(tempBuffer), "%d", (int)num_channels_);
-#endif
 		entries->values[1]->setString(tempBuffer);
 	}
 
 	if (index == 1)
 	{
-		// Set the value for the first column
 		entries->values[0]->setString("port");
-
-		// Set the value for the second column
-#ifdef _WIN32
-		sprintf_s(tempBuffer, "%g", myOffset);
-#else // macOS
 		snprintf(tempBuffer, sizeof(tempBuffer), "%d", (int)port_);
-#endif
 		entries->values[1]->setString( tempBuffer);
 	}
 
@@ -317,13 +304,7 @@ AooReceive_CHOP::getInfoDATEntries(int32_t index,
 	{
 		// Set the value for the first column
 		entries->values[0]->setString("id");
-
-		// Set the value for the second column
-#ifdef _WIN32
-		sprintf_s(tempBuffer, "%g", myOffset);
-#else // macOS
 		snprintf(tempBuffer, sizeof(tempBuffer), "%d", (int)id_);
-#endif
 		entries->values[1]->setString( tempBuffer);
 	}
 
@@ -331,13 +312,7 @@ AooReceive_CHOP::getInfoDATEntries(int32_t index,
 	{
 		// Set the value for the first column
 		entries->values[0]->setString("latency");
-
-		// Set the value for the second column
-#ifdef _WIN32
-		sprintf_s(tempBuffer, "%g", myOffset);
-#else // macOS
 		snprintf(tempBuffer, sizeof(tempBuffer), "%d", (int)latency_);
-#endif
 		entries->values[1]->setString( tempBuffer);
 	}
 }

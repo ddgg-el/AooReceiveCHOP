@@ -1,7 +1,9 @@
+.vs
 .vscode
 plugin/
 CMakeSettings.json
 build*/
+out/
 studi/
 
 backup/

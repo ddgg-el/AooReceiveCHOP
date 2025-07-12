@@ -1,6 +1,8 @@
 #include "TDAooReceive.h"
 #include "cassert"
 
+#include <sstream>
+
 using namespace TD;
 
 AooReceive::AooReceive(int32_t numChannels, double sr, int32_t numSamples, int32_t port, AooId id, int latency)
@@ -21,6 +23,11 @@ AooReceive::AooReceive(int32_t numChannels, double sr, int32_t numSamples, int32
 	sink_->setLatency(latency*0.001);
 
 	client_ = AooClient::create();
+
+	if (!client_) {
+		aooError = "Could not create an AOO client";
+		return;
+	}
 	
 	AooClientSettings settings;
 	settings.portNumber = port;
