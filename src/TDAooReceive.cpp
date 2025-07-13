@@ -90,15 +90,7 @@ AooError AooReceive::setupSink(AooInt32 numChannels, AooSampleRate sr, AooInt32 
 
 void AooReceive::start()
 {
-	// if (!source_host_.empty()) {
-    //     // invite AOO source
-    //     AooEndpoint ep = { &source_addr_, source_size_, source_id_ };
-
-    //     std::cout << "invite source " << ep << "\n";
-
-    //     assert(sink_);
-    //     sink_->inviteSource(ep, nullptr);
-    // }
+	;
 }
 
 void AooReceive::stop()
@@ -116,7 +108,7 @@ void AooReceive::process(float **outBuf, int numFrames)
 
 void AooReceive::handleEvent(const AooEvent &event)
 {
-	TD_LOG << "Received event: " << std::to_string(event.type) << std::endl;
+	// TD_LOG << "Received event: " << std::to_string(event.type) << std::endl;
 
 	switch (event.type)
 	{
@@ -138,7 +130,7 @@ void AooReceive::handleEvent(const AooEvent &event)
     case kAooEventBlockXRun:
     case kAooEventSourcePing:
 	{
-		TD_LOG << "Handling event type: " << std::to_string(event.type) << std::endl;
+		// TD_LOG << "Handling event type: " << std::to_string(event.type) << std::endl;
 		auto& ep = event.endpoint.endpoint;
 		aoo::ip_address addr((const sockaddr*)ep.address, ep.addrlen);
 		switch (event.type)
@@ -194,6 +186,16 @@ void AooReceive::handleEvent(const AooEvent &event)
 				std::string msg;
 				msg = aoo::socket::strerror(aoo::socket::get_last_error());
 				aooError = "Socket error: " + msg;
+				break;
+			}
+			case kAooEventBufferOverrun:
+			{
+				aooInfo = "Buffer overrun detected";
+				break;
+			}
+			case kAooEventBufferUnderrun:
+			{
+				aooInfo = "Buffer underrun detected";
 				break;
 			}
 			

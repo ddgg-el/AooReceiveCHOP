@@ -119,7 +119,7 @@ DestroyCHOPInstance(CHOP_CPlusPlusBase* instance)
 
 // TODO: how do I get the sample rate from the host?
 AooReceive_CHOP::AooReceive_CHOP(const OP_NodeInfo* info) :
-	num_channels_(2), port_(9009), id_(0), sr_(48000), nodeInfo(info)
+	num_channels_(2), port_(9009), id_(0), sr_(48000), blockSize_(800), nodeInfo(info)
 {
 	TD_LOG << "Constructing AooReceive_CHOP" << std::endl;
 }
@@ -205,7 +205,6 @@ AooReceive_CHOP::execute(CHOP_Output* output,
 			PyTuple_SET_ITEM(args, 1, PyUnicode_FromString(aooInfo.c_str()));
 			PyObject* result = nodeInfo->context->callPythonCallback("aoo_log", args, nullptr, nullptr);
 			Py_DECREF(args);
-			TD_LOG << "Aoo Info: " << aooInfo << std::endl;
 		}
 		aoo_receiver->process(output->channels, output->numSamples);
 	} else {
